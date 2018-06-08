@@ -1,4 +1,49 @@
 ;; -*- lexical-binding: t -*-
+;; Copyright (C) 2018 Daniel Colascione
+
+;; Author: Daniel Colascione <dancol@dancol.org>
+;; Version: 1.0
+;; Keywords: faces
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; Uses new Emacs 27 face filters to apply custom face tweaks to the
+;; Emacs window with keyboard focus.
+;;
+;; Example use:
+;;
+;; (require 'window-highlight)
+;; (apply
+;;  #'custom-set-faces
+;;  (let ((inactive-color "#ffffe2")
+;;        (where '((type x w32 ns))))
+;;    `((default
+;;        ((,where
+;;          :background ,inactive-color)))
+;;      (fringe
+;;        ((,where
+;;          :background ,inactive-color)))
+;;      (window-highlight-focused-window
+;;       ((,where
+;;         :background "white"))))))
+;; (window-highlight-mode 1)
+;;
+
+;;; Code:
+
 (require 'face-remap)
 
 (defgroup window-highlight nil "Window highlight"
@@ -110,3 +155,5 @@
   (window-highlight--rescan-windows))
 
 (provide 'window-highlight)
+
+;;; window-highlight.el ends here
