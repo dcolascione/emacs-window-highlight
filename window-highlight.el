@@ -61,17 +61,14 @@
 (defvar window-highlight--need-rescan nil
   "True when we need post-command-hook to refresh internal data")
 
-(defvar window-highlight--focused-frame nil
-  "Currently focused frame")
-
 (defvar-local window-highlight--face-remap-cookies nil
   "Face-remapping cookies applied to current buffer")
 
 (defvar window-highlight-mode)
 
 (defun window-highlight--has-keyboard-focus-p (window)
-  (and (eq (window-frame window) window-highlight--focused-frame)
-       (eq window (selected-window))))
+  (and (frame-focus-state (window-frame window))
+       (eq window (frame-selected-window window))))
 
 (defun window-highlight--rescan-windows ()
   (setf window-highlight--need-rescan nil)
@@ -102,7 +99,7 @@
                  (setf window-highlight--face-remap-cookies nil))))))
     (redraw-display)))
 
-(defun window-highlight--post-command-hook ()
+(defun window-highlight--pre-redisplay (_window)
   (when window-highlight--need-rescan
     (window-highlight--rescan-windows)))
 
@@ -115,13 +112,15 @@
       (setf window-highlight--selected-window (selected-window))
       (setf window-highlight--need-rescan t))))
 
-(defun window-highlight--focus-in-hook ()
-  (setf window-highlight--focused-frame (selected-frame))
-  (window-highlight--rescan-windows))
+(defun window-highlight--make-frame-function (frame)
+  (unless (display-graphic-p frame)
+    (setf window-highlight--need-rescan t)))
 
-(defun window-highlight--focus-out-hook ()
-  (setf window-highlight--focused-frame nil)
-  (window-highlight--rescan-windows))
+(defun window-highlight--after-focus-change-function ()
+  (setf window-highlight--need-rescan t))
+
+(defun window-highlight--change-major-mode ()
+  (setf window-highlight--need-rescan t))
 
 ;;;###autoload
 (define-minor-mode window-highlight-mode
@@ -129,29 +128,36 @@
   :group 'window-highlight
   :global t
   (cond (window-highlight-mode
-         (setf window-highlight--focused-frame (selected-frame))
-         (add-hook 'post-command-hook
-           #'window-highlight--post-command-hook)
+         (set-frame-parameter nil 'wh--have-input-focus t)
          (add-hook 'window-configuration-change-hook
            #'window-highlight--window-configuration-change-hook)
          (add-hook 'buffer-list-update-hook
            #'window-highlight--buffer-list-update-hook)
-         (add-hook 'focus-in-hook
-           #'window-highlight--focus-in-hook)
-         (add-hook 'focus-out-hook
-           #'window-highlight--focus-out-hook))
+         (add-hook 'after-make-frame-functions
+           #'window-highlight--make-frame-function)
+         (add-hook 'change-major-mode-hook
+           #'window-highlight--change-major-mode)
+         (add-function :after after-focus-change-function
+                       #'window-highlight--after-focus-change-function)
+         (add-function :after pre-redisplay-function
+                       #'window-highlight--pre-redisplay)
+         )
         (t
-         (setf window-highlight--focused-frame nil)
-         (remove-hook 'post-command-hook
-                      #'window-highlight--post-command-hook)
+         (mapc (lambda (frame)
+                 (set-frame-parameter frame 'wh--have-input-focus nil))
+               (frame-list))
          (remove-hook 'window-configuration-change-hook
                       #'window-highlight--window-configuration-change-hook)
          (remove-hook 'buffer-list-update-hook
                       #'window-highlight--buffer-list-update-hook)
-         (remove-hook 'focus-in-hook
-                      #'window-highlight--focus-in-hook)
-         (remove-hook 'focus-out-hook
-                      #'window-highlight--focus-out-hook)))
+         (remove-hook 'after-make-frame-functions
+                      #'window-highlight--make-frame-function)
+         (remove-hook 'change-major-mode-hook
+                      #'window-highlight--change-major-mode)
+         (remove-function after-focus-change-function
+                          #'window-highlight--after-focus-change-function)
+         (remove-function pre-redisplay-function
+                          #'window-highlight--pre-redisplay)))
   (window-highlight--rescan-windows))
 
 (provide 'window-highlight)
